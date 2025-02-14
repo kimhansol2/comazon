@@ -1,7 +1,7 @@
 import express from "express";
-import { PrismaClient } from "@prisma/client";
+import { PrismaClient } from "@prisma/client"; //prisma는 데이터베이스와 연결해 데이터를 쉽게 조회하거나 수정할 수 있도록
 import { assert } from "superstruct";
-import * as dotenv from "dotenv";
+import * as dotenv from "dotenv"; //.env 파일에 있는 환경 변수들을 불러온다. (비밀정보를 관리하는 도구)
 import {
   CreateUser,
   PatchUser,
@@ -11,8 +11,22 @@ import {
 
 dotenv.config(); //.env 파일에 저장된 환경 변수를 로드한다.
 const prisma = new PrismaClient(); // prisma 클라이언트 초기화
-const app = express();
-app.use(express.json());
+const app = express(); // 서버 만들기
+app.use(express.json()); // 서버가 json 형식의 데이터를 받을 수 있게 해준다.
+
+function asyncHandler(handler) {
+  return async function (req, res) {
+    try {
+      await handler(req, res);
+    } catch (e) {
+      if (e.name === "StructError") {
+        res.status(400).send({ message: e.message });
+      } else {
+        res.status(500).send({ message: e.message });
+      }
+    }
+  };
+}
 
 app.get("/users", async (req, res) => {
   const { offset = 0, limit = 10, order = "newest" } = req.query;

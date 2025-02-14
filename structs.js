@@ -22,10 +22,10 @@ const category = [
 
 export const CreateProduct = s.object({
   name: s.size(s.string(), 1, 60), // 상품 이름은 1글자 이상 60글자 이하
-  description: s.string(), // 상품 설명은 글자들로 이루어진 문자열
-  category: s.enums(category),
-  price: s.min(s.number(), 0),
-  stock: s.min(s.integer(), 0),
+  description: s.optional(s.string()), // 상품 설명은 글자들로 이루어진 문자열
+  category: s.enums(category), // 상품 카테고리는 이중 하나여야 한다.
+  price: s.min(s.number(), 0), // 가격은 0 이상인 숫자
+  stock: s.min(s.integer(), 0), // 재고는 0 이상인 정수
 });
 
-export const PathProduct = s.partial(CreateProduct);
+export const PathProduct = s.partial(CreateProduct); //createproduct에 있는 항목들 중 일부만 바꾸고 싶을 때 사용
