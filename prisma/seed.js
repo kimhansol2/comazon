@@ -1,5 +1,5 @@
 import { PrismaClient } from "@prisma/client";
-import { USERS } from "./mock.js";
+import { PRODUCTS, USERS } from "./mock.js";
 
 const prisma = new PrismaClient();
 
@@ -10,6 +10,13 @@ async function main() {
   // 목 데이터 삽입
   await prisma.user.createMany({
     data: USERS,
+    skipDuplicates: true,
+  });
+
+  await prisma.product.deleteMany();
+
+  await prisma.product.createMany({
+    data: PRODUCTS,
     skipDuplicates: true,
   });
 }
