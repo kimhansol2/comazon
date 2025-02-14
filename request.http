@@ -1,5 +1,5 @@
 ###
-GET http://localhost:3000/users
+GET http://localhost:3000/users?offset=0&limit=5&order=oldest 
 
 
 ###
@@ -38,7 +38,7 @@ DELETE   http://localhost:3000/users/15f395af-1a64-409b-8042-ebfd2db03245
 
 
 ###
-GET http://localhost:3000/products
+GET http://localhost:3000/products?offset=1&order=priceLowest&category=FASHION
 
 
 
