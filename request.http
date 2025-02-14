@@ -10,7 +10,7 @@ POST http://localhost:3000/users
 Content-Type: application/json
 
 {
-  "email":"ksot1233@naver.com",
+  "email":"ksot1233@gmail.com",
   "firstName":"go",
   "lastName":"Bong",
   "address": "원주"
@@ -55,7 +55,7 @@ Content-Type: application/json
   "description": "코드인 로고가 새겨진 보라색 후디",
   "price": 39000,
   "stock": 10,
-  "category": "FASHION"
+  "category": "FASHI"
 }
 
 
