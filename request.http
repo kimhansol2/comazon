@@ -68,5 +68,5 @@ Content-Type: application/json
   "description": "김한솔 로고가 새겨진 파란색 후디",
   "price": 51000,
   "stock": 100,
-  "category": "FASHIONN"
+  "category": "FASHION"
 }
