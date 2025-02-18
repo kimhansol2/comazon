@@ -15,6 +15,8 @@ import {
   PatchUser,
   CreateProduct,
   PathProduct,
+  CreateOrder,
+  CreateSavedProduct,
 } from "./structs.js";
 import { PrismaClientValidationError } from "@prisma/client/runtime/library";
 
@@ -71,6 +73,11 @@ app.get(
       orderBy,
       skip: parseInt(offset),
       take: parseInt(limit),
+      include: {
+        userPreference: {
+          select: { receiveEmail: true },
+        },
+      },
     });
     res.send(users);
   })
@@ -82,17 +89,69 @@ app.get(
     const { id } = req.params;
     const user = await prisma.user.findUniqueOrThrow({
       where: { id },
+      include: {
+        userPreference: {
+          select: {
+            receiveEmail: true,
+          },
+        },
+      },
     });
     res.send(user);
   })
 );
 
 app.post(
-  "/users",
+  "/users/:id/saved-products",
   asyncHandler(async (req, res) => {
-    assert(req.body, CreateUser);
-    const user = await prisma.user.create({ data: req.body });
-    res.status(201).send(user);
+    assert(req.body, CreateSavedProduct);
+    const { id: userId } = req.params;
+    const { productId } = req.body;
+    //판단로직
+    const savedCount = await prisma.user.count({
+      where: {
+        id: userId,
+        savedProducts: {
+          some: { id: productId },
+        },
+      },
+    });
+    console.log("savedCount:", savedCount);
+    const { savedProducts } = await prisma.user.update({
+      where: { id: userId },
+      data: {
+        savedProducts:
+          savedCount > 0
+            ? { disconnect: { id: productId } }
+            : { connect: { id: productId } },
+      },
+      include: {
+        savedProducts: true,
+      },
+    });
+    res.send(savedProducts);
+  })
+);
+
+app.patch(
+  "/users/:id/saved-products",
+  asyncHandler(async (req, res) => {
+    const { id: userId } = req.params;
+    const { productId } = req.body;
+    const { savedProducts } = await prisma.user.update({
+      where: { id: userId },
+      data: {
+        savedProducts: {
+          disconnect: {
+            id: productId,
+          },
+        },
+      },
+      include: {
+        savedProducts: true,
+      },
+    });
+    res.send(savedProducts);
   })
 );
 
@@ -101,9 +160,19 @@ app.patch(
   asyncHandler(async (req, res) => {
     const { id } = req.params;
     assert(req.body, PatchUser);
+
+    const { userPreference, ...userFields } = req.body;
     const user = await prisma.user.update({
       where: { id },
-      data: req.body,
+      data: {
+        ...userFields,
+        userPreference: {
+          update: userPreference,
+        },
+      },
+      include: {
+        userPreference: true,
+      },
     });
     res.send(user);
   })
@@ -117,6 +186,34 @@ app.delete(
       where: { id },
     });
     res.send("Success delete");
+  })
+);
+
+app.get(
+  "/users/:id/orders",
+  asyncHandler(async (req, res) => {
+    const { id } = req.params;
+    const { orders } = await prisma.user.findUniqueOrThrow({
+      where: { id },
+      include: {
+        orders: true,
+      },
+    });
+    res.send(orders);
+  })
+);
+
+app.get(
+  "/users/:id/saved-products",
+  asyncHandler(async (req, res) => {
+    const { id } = req.params;
+    const { savedProducts } = await prisma.user.findUniqueOrThrow({
+      where: { id },
+      include: {
+        savedProducts: true,
+      },
+    });
+    res.send(savedProducts);
   })
 );
 
@@ -195,6 +292,101 @@ app.delete(
       where: { id },
     });
     res.sendStatus(204);
+  })
+);
+
+app.post(
+  "/orders",
+  asyncHandler(async (req, res) => {
+    assert(req.body, CreateOrder);
+    const { userId, orderItems } = req.body;
+
+    //1. get products
+    const productIds = orderItems.map((orderItem) => orderItem.productId);
+    const products = await prisma.product.findMany({
+      where: { id: { in: productIds } },
+    });
+
+    function getQuantity(productId) {
+      const { quantity } = orderItems.find(
+        (orderItem) => orderItem.productId === productId
+      );
+      return quantity;
+    }
+    //2. 재고와 주문량 비교
+    const isSuffcientStock = products.every((product) => {
+      const { id, stock } = product;
+      return stock >= getQuantity(id);
+    });
+    //3. error or create order
+    if (!isSuffcientStock) {
+      throw new Error("Insufficient Stock");
+    }
+    //Quiz: 실제 상품의 재고량을 감소시키는 로직 추가
+    //for (const productId of productIds) {
+    //  await prisma.product.update({
+    //    where: { id: productId },
+    //    data: {
+    //      stock: {
+    //        decrement: getQuantity(productId),
+    //      },
+    //    },
+    //  });
+    // }
+
+    //await 안해서 pending 상태임
+    const queries = productIds.map((productId) => {
+      return prisma.product.update({
+        where: { id: productId },
+        data: {
+          stock: {
+            decrement: getQuantity(productId),
+          },
+        },
+      });
+    });
+
+    const [order] = await prisma.$transaction([
+      prisma.order.create({
+        data: {
+          user: {
+            connect: { id: userId },
+          },
+          orderItems: {
+            create: orderItems,
+          },
+        },
+        include: {
+          orderItems: true,
+        },
+      }),
+      ...queries,
+    ]);
+
+    res.status(201).send(order);
+  })
+);
+
+app.get(
+  "/orders/:id",
+  asyncHandler(async (req, res) => {
+    const { id } = req.params;
+    const order = await prisma.order.findUniqueOrThrow({
+      where: { id },
+      include: {
+        orderItems: true,
+      },
+    });
+    let total = 0;
+    order.orderItems.forEach(({ unitPrice, quantity }) => {
+      total += unitPrice * quantity;
+    });
+
+    //const total = order.order.orderItems.reduce((acc, { unitPrice, quantitiy})=>{
+    //return acc + unitPrice * quantitiyl},0);
+
+    order.total = total;
+    res.send(order);
   })
 );
 
