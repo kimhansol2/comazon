@@ -25,7 +25,7 @@ dotenv.config(); //.env  파일에 저장된 환경 변수들을 불러오는 �
 const prisma = new PrismaClient(); // prisma라는 변수를 만들어서 데이터베이스와 연결하는 역할을 함
 const app = express(); // express로 웹 서버를 만든다. 이 서버는 요청을 보내면 처리하고 응답을 보내주는 역할을 한다.
 // 예를 들어, 웹사이트나 앱을 만들 때 서버가 있어야 그 위에서 데이터를 주고 받을 수 있다.
-app.use(cores());
+app.use(cors());
 app.use(express.json()); // 서버가 json 형식의 데이터를 받을 수 있게 해준다.
 // 예를들어 우리가  {"name":"john"}과 같은 데이터를 서버에 보낼 때, 서버가 이 데이터를 제대로 이해할 수
 // 수 있도록 도와준다.
