@@ -18,12 +18,14 @@ import {
   CreateOrder,
   CreateSavedProduct,
 } from "./structs.js";
+import cors from "cors";
 import { PrismaClientValidationError } from "@prisma/client/runtime/library";
 
 dotenv.config(); //.env  파일에 저장된 환경 변수들을 불러오는 명령이다.
 const prisma = new PrismaClient(); // prisma라는 변수를 만들어서 데이터베이스와 연결하는 역할을 함
 const app = express(); // express로 웹 서버를 만든다. 이 서버는 요청을 보내면 처리하고 응답을 보내주는 역할을 한다.
 // 예를 들어, 웹사이트나 앱을 만들 때 서버가 있어야 그 위에서 데이터를 주고 받을 수 있다.
+app.use(cores());
 app.use(express.json()); // 서버가 json 형식의 데이터를 받을 수 있게 해준다.
 // 예를들어 우리가  {"name":"john"}과 같은 데이터를 서버에 보낼 때, 서버가 이 데이터를 제대로 이해할 수
 // 수 있도록 도와준다.
@@ -298,17 +300,21 @@ app.delete(
 app.post(
   "/orders",
   asyncHandler(async (req, res) => {
-    assert(req.body, CreateOrder);
-    const { userId, orderItems } = req.body;
+    assert(req.body, CreateOrder); // 요청 바디가 createorder 타입인지 확인
+    const { userId, orderItems } = req.body; // 요청 본문에서 userId와 orderItems를 추출하는 코드
 
     //1. get products
     const productIds = orderItems.map((orderItem) => orderItem.productId);
+    // 사용자가 주문한 상품들의 productId만 뽑아서 배열에 저장
     const products = await prisma.product.findMany({
       where: { id: { in: productIds } },
-    });
+    }); // 상품 ID를 기준으로 데이터베이스에서 해당 상품들의 정보를 가져오는 코드
+    //ProductIds 배열에 있는 ID에 해당하는 상품들을 모두 찾아서 products 변수에 저장
 
     function getQuantity(productId) {
+      // 주문 아이템 중에서 특정 productId에 해당하는
       const { quantity } = orderItems.find(
+        //상품의 수량 (quantity)을 찾아서 반환하는 함수
         (orderItem) => orderItem.productId === productId
       );
       return quantity;
